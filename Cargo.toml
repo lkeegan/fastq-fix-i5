@@ -1,0 +1,19 @@
+[package]
+name = "fastq-fix-i5"
+version = "1.0.0"
+edition = "2021"
+license = "MIT"
+description = "Rewrite FASTQ headers by reverse-complementing only the i5 (P5/index2) part in ...:i7+i5"
+repository = "https://example.invalid/replace-me"
+
+[dependencies]
+memchr = "2"
+
+[dev-dependencies]
+rstest = "0.22"
+assert_cmd = "2"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
