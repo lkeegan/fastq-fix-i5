@@ -1,7 +1,7 @@
 # fastq-fix-i5
 
 [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/fastq-fix-i5/README.html)
-![Crates.io Version](https://img.shields.io/crates/v/fastq-fix-i5)
+[![Crates.io Version](https://img.shields.io/crates/v/fastq-fix-i5)](https://crates.io/crates/fastq-fix-i5)
 
 A fast, streaming tool to **rewrite FASTQ headers by
 reverse-complementing the i5 (Index2 / P5) barcode**,
