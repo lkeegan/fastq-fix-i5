@@ -1,5 +1,8 @@
 # fastq-fix-i5
 
+[![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/fastq-fix-i5/README.html)
+![Crates.io Version](https://img.shields.io/crates/v/fastq-fix-i5)
+
 A fast, streaming tool to **rewrite FASTQ headers by
 reverse-complementing the i5 (Index2 / P5) barcode**,
 without modifying read sequences or quality scores.
@@ -22,7 +25,19 @@ platforms (e.g. Illumina and AVITI) where i5 orientation conventions differ.
 
 ## Installation
 
-Download a pre-compiled binary for your platform from the [latest release](https://github.com/ssciwr/fastq-fix-i5/releases/latest).
+To install from bioconda:
+
+```
+conda install -c bioconda fastq-fix-i5
+```
+
+To build and install using the rust package manager cargo:
+
+```
+cargo install fastq-fix-i5
+```
+
+Alternatively you can download a [pre-compiled binary](https://github.com/ssciwr/fastq-fix-i5/releases/latest) for your platform.
 
 ## Use
 
