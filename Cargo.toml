@@ -14,9 +14,10 @@ rust-version = "1.77"
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 memchr = "2"
+predicates = "3"
 
 [dev-dependencies]
-rstest = "0.22"
+rstest = "0.26"
 assert_cmd = "2"
 
 [profile.release]

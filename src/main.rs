@@ -47,22 +47,37 @@ fn reverse_complement_in_place(buf: &mut [u8]) {
 
 /// Reverse-complement the i5 part of a FASTQ header line in-place
 /// Header is expected to start with '@' and end with ":i7+i5\n".
-/// Returns false if pattern not found (no rewrite); true if rewritten.
-fn rewrite_header_i5(header: &mut [u8]) -> bool {
+/// Returns an error if the header is invalid
+fn rewrite_header_i5(header: &mut [u8]) -> io::Result<()> {
     if header.is_empty() || header[0] != b'@' {
-        // Not a FASTQ header; pass through unchanged.
-        return false;
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "invalid FASTQ header: does not start with '@'",
+        ));
+    }
+
+    if header.last() != Some(&b'\n') {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "invalid FASTQ header: missing trailing newline",
+        ));
     }
 
     // Find last ':' in the header.
     let Some(colon_index) = memrchr(b':', header) else {
-        return false;
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "invalid FASTQ header: missing ':' before index field",
+        ));
     };
     let after_colon_index = colon_index + 1;
 
     // Find '+' after that last ':'.
     let Some(relative_plus_index) = memchr(b'+', &header[after_colon_index..]) else {
-        return false;
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "invalid FASTQ header: missing '+' in index field",
+        ));
     };
     let after_plus_index = after_colon_index + relative_plus_index + 1;
 
@@ -70,7 +85,7 @@ fn rewrite_header_i5(header: &mut [u8]) -> bool {
     let stop_h5_index = header.len() - 1; // exclude final '\n'
     let i5 = &mut header[after_plus_index..stop_h5_index];
     reverse_complement_in_place(i5);
-    true
+    Ok(())
 }
 
 /// Read one line (including the trailing '\n' if present) into line, erasing previous contents.
@@ -118,7 +133,7 @@ fn main() -> io::Result<()> {
         if read_line(&mut input, &mut line)? == 0 {
             break; // no header: EOF
         }
-        rewrite_header_i5(&mut line);
+        rewrite_header_i5(&mut line)?;
         output.write_all(&line)?;
 
         // copy remaining lines of the FASTQ record unchanged
@@ -158,10 +173,6 @@ mod tests {
         b"@inst:run:flow:lane:tile:x:y 1:N:0:AAAA+TTTT\n",
         b"@inst:run:flow:lane:tile:x:y 1:N:0:AAAA+AAAA\n"
     )]
-    #[case::no_plus(b"@r5 1:N:0:AAAA\n", b"@r5 1:N:0:AAAA\n")]
-    #[case::no_colon(b"@r6 no_index_here\n", b"@r6 no_index_here\n")]
-    #[case::no_newline(b"@r7 1:N:0:CCCC+AGTC", b"@r7 1:N:0:CCCC+GACT")]
-    #[case::empty_header(b"@\n", b"@\n")]
     #[case::empty_i5(b"@pyt1 1:N:0:AAAA+\n", b"@pyt1 1:N:0:AAAA+\n")]
     #[case::single_a(b"@pyt2 1:N:0:AAAA+A\n", b"@pyt2 1:N:0:AAAA+T\n")]
     #[case::single_n(b"@pyt3 1:N:0:AAAA+N\n", b"@pyt3 1:N:0:AAAA+N\n")]
@@ -174,9 +185,12 @@ mod tests {
     #[case::ns_flanking(b"@pyt10 1:N:0:AAAA+NNACGTNN\n", b"@pyt10 1:N:0:AAAA+NNACGTNN\n")]
     #[case::general_atcacg(b"@pyt11 1:N:0:AAAA+ATCACG\n", b"@pyt11 1:N:0:AAAA+CGTGAT\n")]
     #[case::general_ttaggc(b"@pyt12 1:N:0:AAAA+TTAGGC\n", b"@pyt12 1:N:0:AAAA+GCCTAA\n")]
-    fn rewrite_header_i5_cases(#[case] input: &[u8], #[case] expected: &[u8]) {
+    fn rewrite_header_i5_valid(
+        #[case] input: &[u8],
+        #[case] expected: &[u8],
+    ) -> std::io::Result<()> {
         let mut header = input.to_vec();
-        rewrite_header_i5(&mut header);
+        rewrite_header_i5(&mut header)?;
         assert_eq!(
             String::from_utf8_lossy(&header),
             String::from_utf8_lossy(expected),
@@ -184,6 +198,22 @@ mod tests {
             String::from_utf8_lossy(input),
             String::from_utf8_lossy(&header),
             String::from_utf8_lossy(expected),
+        );
+        Ok(())
+    }
+
+    #[rstest]
+    #[case::empty_header(b"@\n", "missing ':'")]
+    #[case::no_colon(b"@r6 no_index_here\n", "missing ':'")]
+    #[case::no_plus(b"@r5 1:N:0:AAAA\n", "missing '+'")]
+    #[case::no_newline(b"@r7 1:N:0:CCCC+AGTC", "missing trailing newline")]
+    fn rewrite_header_i5_invalid(#[case] input: &[u8], #[case] msg_substr: &str) {
+        let mut header = input.to_vec();
+        let err = rewrite_header_i5(&mut header).expect_err("expected rewrite_header_i5 to fail");
+        let msg = err.to_string();
+        assert!(
+            msg.contains(msg_substr),
+            "error message did not contain expected substring.\n  expected: {msg_substr}\n  got: {msg}"
         );
     }
 }
