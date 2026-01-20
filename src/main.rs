@@ -1,6 +1,6 @@
+use clap::Parser;
 use memchr::{memchr, memrchr};
 use std::io::{self, BufRead, Read, Write};
-use clap::Parser;
 
 #[derive(Parser)]
 #[command(
@@ -48,7 +48,7 @@ fn reverse_complement_in_place(buf: &mut [u8]) {
 /// Reverse-complement the i5 part of a FASTQ header line in-place
 /// Header is expected to start with '@' and end with ":i7+i5\n".
 /// Returns false if pattern not found (no rewrite); true if rewritten.
-fn rewrite_header_i5(header: &mut Vec<u8>) -> bool {
+fn rewrite_header_i5(header: &mut [u8]) -> bool {
     if header.is_empty() || header[0] != b'@' {
         // Not a FASTQ header; pass through unchanged.
         return false;

@@ -1,11 +1,15 @@
 [package]
 name = "fastq-fix-i5"
 version = "1.0.0"
-edition = "2021"
 license = "MIT"
 description = "Rewrite FASTQ headers by reverse-complementing only the i5 (P5/index2) part in ...:i7+i5"
-repository = "https://example.invalid/replace-me"
+repository = "https://github.com/ssciwr/fastq-fix-i5"
+readme = "README.md"
 authors = ["Liam Keegan <liam@keegan.ch>"]
+keywords = ["fastq", "bioinformatics", "illumina", "sequencing"]
+categories = ["command-line-utilities", "science"]
+edition = "2021"
+rust-version = "1.74"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
