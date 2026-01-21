@@ -14,11 +14,11 @@ rust-version = "1.82"
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 memchr = "2"
-predicates = "3"
 
 [dev-dependencies]
 rstest = "0.26"
 assert_cmd = "2"
+predicates = "3"
 
 [profile.release]
 lto = true
