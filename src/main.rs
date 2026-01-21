@@ -169,8 +169,9 @@ mod tests {
     #[case::acg(b"@r1 1:N:0:AAAA+ACG\n", b"@r1 1:N:0:AAAA+CGT\n")]
     #[case::acgt(b"@r1 1:N:0:AAAA+ACGT\n", b"@r1 1:N:0:AAAA+ACGT\n")]
     #[case::acgt_lowercase(b"@r2 1:N:0:CCCC+acgt\n", b"@r2 1:N:0:CCCC+acgt\n")]
-    #[case::nnnn(b"@r3 1:N:0:GGGG+NNNN\n", b"@r3 1:N:0:GGGG+NNNN\n")]
+    #[case::nnnn(b"@r3 1:N:0:GGGG+NnNn\n", b"@r3 1:N:0:GGGG+nNnN\n")]
     #[case::actg_mixedcase(b"@r4 1:N:0:TTTT+AcTg\n", b"@r4 1:N:0:TTTT+cAgT\n")]
+    #[case::unknown_chars_are_left_unchanged(b"@r4 1:N:0:TTTT+xyZY\n", b"@r4 1:N:0:TTTT+YZyx\n")]
     #[case::extra_colons(
         b"@inst:run:flow:lane:tile:x:y 1:N:0:AAAA+TTTT\n",
         b"@inst:run:flow:lane:tile:x:y 1:N:0:AAAA+AAAA\n"
@@ -211,10 +212,11 @@ mod tests {
     }
 
     #[rstest]
-    #[case::empty_header(b"@\n", "missing ':'")]
-    #[case::no_colon(b"@r6 no_index_here\n", "missing ':'")]
-    #[case::no_plus(b"@r5 1:N:0:AAAA\n", "missing '+'")]
-    #[case::no_newline(b"@r7 1:N:0:CCCC+AGTC", "missing trailing newline")]
+    #[case::empty_header(b"\n", "'@'")]
+    #[case::no_colon_short(b"@\n", "':'")]
+    #[case::no_colon_long(b"@r6 no_index_here\n", "':'")]
+    #[case::no_plus(b"@r5 1:N:0:AAAA\n", "'+'")]
+    #[case::no_newline(b"@r7 1:N:0:CCCC+AGTC", "newline")]
     fn rewrite_header_i5_invalid(#[case] input: &[u8], #[case] msg_substr: &str) {
         let mut header = input.to_vec();
         let err = rewrite_header_i5(&mut header).expect_err("expected rewrite_header_i5 to fail");
