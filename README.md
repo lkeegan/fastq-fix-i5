@@ -24,6 +24,10 @@ platforms (e.g. Illumina and AVITI) where i5 orientation conventions differ.
     - leaves everything else unchanged
 - Writes FASTQ to **stdout**
 
+If it encounters a header that does not conform to the expected format,
+or a truncated FASTQ record,
+it will print an error message to stderr and exit with a non-zero status code.
+
 ## Installation
 
 To install from bioconda:
@@ -59,5 +63,34 @@ pigz -dc input.fastq.gz | fastq-fix-i5 | pigz -c > output.fastq.gz
 
 `fastq-fix-i5` is designed to be fast and memory-efficient.
 It processes FASTQ data in a streaming fashion,
-which allows it to process millions of reads per second
-using a single CPU core and <5MB of memory.
+which allows it to process millions of reads per second using a single CPU core,
+using a tiny fixed amount (< 3MB) of RAM regardless of input size.
+
+Here are some example benchmarks for processing 10 million synthetic fastq reads on a standard desktop computer:
+
+| Command                                                           | Time | Throughput           |
+|-------------------------------------------------------------------|------|----------------------|
+| `fastq-fix-i5 < 10m.fastq > /dev/null`                            | 3.2s | 3.1 million reads/s  |
+| `fastq-fix-i5 < 10m.fastq > out.fastq`                            | 9.2s | 1.1 million reads/s  |
+| `pigz -dc 10m.fastq.gz \| fastq-fix-i5 > /dev/null`               | 4.0s | 2.5 million reads/s  |
+| `pigz -dc 10m.fastq.gz \| fastq-fix-i5 \| pigz -c > out.fastq.gz` | 6.5s | 1.5 million reads/s  |
+
+In addition, since the runtime in these benchmarks is largely I/O-bound,
+inserting `fastq-fix-i5` into an existing Unix pipe (`|`) between other commands
+will have minimal impact on the overall speed:
+
+```bash
+Without fastq-fix-i5: pigz -dc 10m.fastq.gz | pigz -c > out.fastq.gz
+  Time (mean ± σ):      6.445 s ±  0.079 s    [User: 39.832 s, System: 17.983 s]
+  Range (min … max):    6.327 s …  6.582 s    10 runs
+
+With fastq-fix-i5: pigz -dc 10m.fastq.gz | fastq-fix-i5 | pigz -c > out.fastq.gz
+  Time (mean ± σ):      6.526 s ±  0.014 s    [User: 49.848 s, System: 16.374 s]
+  Range (min … max):    6.508 s …  6.543 s    10 runs
+````
+
+The synthetic FASTQ file used above was generated using the following command:
+
+```bash
+yes "@VH00821:6:AACCCKLM5:1:1101:18231:1000 1:N:0:TCTTGAGGTT+ATCACGATCA\nACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT\n+\nIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII" | head -n $((10000000 * 4)) > 10m.fastq
+```

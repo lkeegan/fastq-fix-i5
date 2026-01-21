@@ -9,7 +9,7 @@ repos:
       - id: end-of-file-fixer
 
   - repo: https://github.com/crate-ci/typos
-    rev: v1.42.0
+    rev: v1.42.1
     hooks:
       - id: typos
 
@@ -20,7 +20,7 @@ repos:
         entry: cargo fmt --
         language: system
         types: [rust]
-        pass_filenames:
+        pass_filenames: false
 
       - id: cargo-clippy
         name: cargo clippy
