@@ -17,12 +17,12 @@ platforms (e.g. Illumina and AVITI) where i5 orientation conventions differ.
 ## What this tool does
 
 - Reads FASTQ from **stdin**
-- Writes FASTQ to **stdout**
 - For each record:
     - parses the FASTQ header
     - finds the final `:<i7>+<i5>` field
     - **reverse-complements only the i5 part**
-- Leaves everything else unchanged
+    - leaves everything else unchanged
+- Writes FASTQ to **stdout**
 
 ## Installation
 
