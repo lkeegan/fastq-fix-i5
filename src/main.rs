@@ -88,12 +88,31 @@ fn rewrite_header_i5(header: &mut [u8]) -> io::Result<()> {
     Ok(())
 }
 
-/// Read one line (including the trailing '\n' if present) into line, erasing previous contents.
+/// Append one line from reader (including the trailing '\n' if present) to the supplied line vector.
 /// Returns number of bytes read (0 on EOF).
 #[inline(always)]
 fn read_line<R: Read>(reader: &mut io::BufReader<R>, line: &mut Vec<u8>) -> io::Result<usize> {
-    line.clear();
-    reader.read_until(b'\n', line)
+    let mut total = 0usize;
+    loop {
+        let available = reader.fill_buf()?;
+        if available.is_empty() {
+            return Ok(total);
+        }
+        if let Some(pos) = memchr(b'\n', available) {
+            // include newline
+            line.extend_from_slice(&available[..=pos]);
+            let consume = pos + 1;
+            reader.consume(consume);
+            total += consume;
+            return Ok(total);
+        } else {
+            // consume all
+            line.extend_from_slice(available);
+            let consume = available.len();
+            reader.consume(consume);
+            total += consume;
+        }
+    }
 }
 
 /// Read FASTQ records from stdin, rewrite headers by reverse-complementing the i5 barcodes,
@@ -112,6 +131,7 @@ fn main() -> io::Result<()> {
 
     loop {
         // rewrite header line
+        header.clear();
         if read_line(&mut input, &mut header)? == 0 {
             break; // no header: EOF
         }
@@ -121,7 +141,7 @@ fn main() -> io::Result<()> {
         // copy remaining lines of the FASTQ record unchanged
         tail.clear();
         for _ in 0..3 {
-            if input.read_until(b'\n', &mut tail)? == 0 {
+            if read_line(&mut input, &mut tail)? == 0 {
                 return Err(io::Error::new(
                     io::ErrorKind::UnexpectedEof,
                     "truncated FASTQ record (expected 4 lines)",
