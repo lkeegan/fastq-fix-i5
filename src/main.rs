@@ -93,27 +93,7 @@ fn rewrite_header_i5(header: &mut [u8]) -> io::Result<()> {
 #[inline(always)]
 fn read_line<R: Read>(reader: &mut io::BufReader<R>, line: &mut Vec<u8>) -> io::Result<usize> {
     line.clear();
-    let mut total = 0usize;
-    loop {
-        let available = reader.fill_buf()?;
-        if available.is_empty() {
-            return Ok(total);
-        }
-        if let Some(pos) = memchr(b'\n', available) {
-            // include newline
-            line.extend_from_slice(&available[..=pos]);
-            let consume = pos + 1;
-            reader.consume(consume);
-            total += consume;
-            return Ok(total);
-        } else {
-            // consume all
-            line.extend_from_slice(available);
-            let consume = available.len();
-            reader.consume(consume);
-            total += consume;
-        }
-    }
+    reader.read_until(b'\n', line)
 }
 
 /// Read FASTQ records from stdin, rewrite headers by reverse-complementing the i5 barcodes,
