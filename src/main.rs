@@ -88,29 +88,46 @@ fn rewrite_header_i5(header: &mut [u8]) -> io::Result<()> {
     Ok(())
 }
 
-/// Append one line from reader (including the trailing '\n' if present) to the supplied line vector.
-/// Returns number of bytes read (0 on EOF).
+/// Append N lines from reader (including trailing '\n') to the supplied line vector.
+/// Returns number of bytes read (0 on EOF or if fewer than N newlines are found).
 #[inline(always)]
-fn read_line<R: Read>(reader: &mut io::BufReader<R>, line: &mut Vec<u8>) -> io::Result<usize> {
+fn read_lines<R: Read>(
+    reader: &mut io::BufReader<R>,
+    line: &mut Vec<u8>,
+    n: usize,
+) -> io::Result<usize> {
+    if n == 0 {
+        return Ok(0);
+    }
+    let start_len = line.len();
     let mut total = 0usize;
     loop {
         let available = reader.fill_buf()?;
         if available.is_empty() {
-            return Ok(total);
+            line.truncate(start_len);
+            return Ok(0);
         }
-        if let Some(pos) = memchr(b'\n', available) {
-            // include newline
-            line.extend_from_slice(&available[..=pos]);
-            let consume = pos + 1;
-            reader.consume(consume);
-            total += consume;
-            return Ok(total);
-        } else {
-            // consume all
-            line.extend_from_slice(available);
-            let consume = available.len();
-            reader.consume(consume);
-            total += consume;
+        let mut search_start = 0usize;
+        let mut remaining = n;
+        while remaining > 0 {
+            if let Some(rel_pos) = memchr(b'\n', &available[search_start..]) {
+                let pos = search_start + rel_pos;
+                search_start = pos + 1;
+                remaining -= 1;
+                if remaining == 0 {
+                    // include newline
+                    line.extend_from_slice(&available[..search_start]);
+                    reader.consume(search_start);
+                    total += search_start;
+                    return Ok(total);
+                }
+            } else {
+                let available_len = available.len();
+                line.extend_from_slice(available);
+                reader.consume(available_len);
+                total += available_len;
+                break;
+            }
         }
     }
 }
@@ -132,7 +149,7 @@ fn main() -> io::Result<()> {
     loop {
         // rewrite header line
         header.clear();
-        if read_line(&mut input, &mut header)? == 0 {
+        if read_lines(&mut input, &mut header, 1)? == 0 {
             break; // no header: EOF
         }
         rewrite_header_i5(&mut header)?;
@@ -140,13 +157,11 @@ fn main() -> io::Result<()> {
 
         // copy remaining lines of the FASTQ record unchanged
         tail.clear();
-        for _ in 0..3 {
-            if read_line(&mut input, &mut tail)? == 0 {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "truncated FASTQ record (expected 4 lines)",
-                ));
-            }
+        if read_lines(&mut input, &mut tail, 3)? == 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "truncated FASTQ record (expected 4 lines)",
+            ));
         }
         output.write_all(&tail)?;
     }
