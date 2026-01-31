@@ -107,27 +107,28 @@ fn main() -> io::Result<()> {
     let mut output = io::BufWriter::with_capacity(IO_BUFFER_BYTES, stdout.lock());
 
     // Buffer for a FASTQ record line (a record is 4 lines where the first line is the header)
-    let mut line = Vec::<u8>::with_capacity(1024);
-    const N_LINES_PER_RECORD: usize = 4;
+    let mut header = Vec::<u8>::with_capacity(1024);
+    let mut tail = Vec::<u8>::with_capacity(3 * 1024);
 
     loop {
         // rewrite header line
-        if read_line(&mut input, &mut line)? == 0 {
+        if read_line(&mut input, &mut header)? == 0 {
             break; // no header: EOF
         }
-        rewrite_header_i5(&mut line)?;
-        output.write_all(&line)?;
+        rewrite_header_i5(&mut header)?;
+        output.write_all(&header)?;
 
         // copy remaining lines of the FASTQ record unchanged
-        for _ in 1..N_LINES_PER_RECORD {
-            if read_line(&mut input, &mut line)? == 0 {
+        tail.clear();
+        for _ in 0..3 {
+            if input.read_until(b'\n', &mut tail)? == 0 {
                 return Err(io::Error::new(
                     io::ErrorKind::UnexpectedEof,
                     "truncated FASTQ record (expected 4 lines)",
                 ));
             }
-            output.write_all(&line)?;
         }
+        output.write_all(&tail)?;
     }
 
     output.flush()?;
